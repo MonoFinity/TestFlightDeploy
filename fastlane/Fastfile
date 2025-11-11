@@ -1,0 +1,43 @@
+# Fastfile for LiteByte iOS Build Automation
+# This fastlane configuration handles uploading builds to TestFlight
+
+default_platform(:ios)
+
+platform :ios do
+  desc "Upload iOS build to TestFlight"
+  lane :tf_upload do |options|
+    # Get the IPA path from options or fallback search
+    ipa_path = options[:ipa_path] || Dir.glob("../.build/last/*.ipa").first || Dir.glob("*.ipa").first
+    
+    if ipa_path.nil? || !File.exist?(ipa_path)
+      UI.user_error!("❌ No IPA file found at: #{ipa_path || 'any standard path'}")
+    end
+    
+    UI.success("📦 Found IPA: #{ipa_path}")
+    
+    # Get credentials from environment
+    apple_id = ENV['APPLE_ID'] || 'martiangames@gmail.com'
+    password = ENV['APPLE_APP_SPECIFIC_PASSWORD']
+    issuer_id = ENV['APPLE_ISSUER_ID']
+    
+    if password.nil?
+      UI.user_error!("❌ APPLE_APP_SPECIFIC_PASSWORD not set in environment")
+    end
+    
+    UI.message("🔐 Using authentication for: #{apple_id}")
+    
+    # Upload to TestFlight
+    upload_to_testflight(
+      ipa: ipa_path,
+      username: apple_id,
+      app_identifier: "com.liithos.litebyte",
+      skip_waiting_for_build_processing: true,
+      skip_submission: true,
+      distribute_external: false,
+      notify_external_testers: false
+    )
+    
+    UI.success("✅ Successfully uploaded to TestFlight!")
+    UI.message("📱 Check status: https://appstoreconnect.apple.com")
+  end
+end
