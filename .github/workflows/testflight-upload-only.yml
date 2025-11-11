@@ -102,6 +102,8 @@ jobs:
           echo "WORKSPACE=$GITHUB_WORKSPACE" >> $GITHUB_ENV
       
       - name: Run TestFlight upload
+        env:
+          FASTLANE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
         run: |
           echo "🚀 Running fastlane upload to TestFlight..."
           IPA_ABSOLUTE_PATH="$GITHUB_WORKSPACE/.build/last/LiteByte.ipa"
