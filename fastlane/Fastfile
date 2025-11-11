@@ -58,32 +58,26 @@ platform :ios do
       UI.message("🔐 Using App Store Connect API key authentication")
       UI.success("✓ Valid PEM key detected")
       
-      # Create JSON file with API key information (required by api_key_path)
-      api_key_json = {
-        "key_id" => key_id,
-        "issuer_id" => issuer_id,
-        "key" => key_pem_text
+      # Create API key hash (alternative to using JSON file)
+      api_key_hash = {
+        key_id: key_id,
+        issuer_id: issuer_id,
+        key: key_pem_text,
+        in_house: false
       }
       
-      key_file = Tempfile.new(['api_key', '.json'])
-      key_file.write(JSON.pretty_generate(api_key_json))
-      key_file.close
+      UI.message("� API key configured: #{key_id}")
       
-      UI.message("📁 API key JSON: #{key_file.path}")
-      
-      # Upload to TestFlight using JSON file path
+      # Upload to TestFlight using API key hash
       upload_to_testflight(
         ipa: ipa_path,
-        api_key_path: key_file.path,
+        api_key: api_key_hash,
         app_identifier: "com.liithos.litebyte",
         skip_waiting_for_build_processing: true,
         skip_submission: true,
         distribute_external: false,
         notify_external_testers: false
       )
-      
-      # Clean up
-      key_file.unlink
       
       UI.success("✅ Successfully uploaded to TestFlight!")
       UI.message("📱 Check status: https://appstoreconnect.apple.com")
