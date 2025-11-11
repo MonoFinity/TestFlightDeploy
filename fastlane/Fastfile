@@ -15,63 +15,26 @@ platform :ios do
       ipa_path = options[:ipa_path] || Dir.glob("../.build/last/*.ipa").first || Dir.glob("*.ipa").first
       
       if ipa_path.nil? || !File.exist?(ipa_path)
-        UI.user_error!("❌ No IPA file found at: #{ipa_path || 'any standard path'}")
+        UI.user_error!("No IPA file found at: #{ipa_path || 'any standard path'}")
       end
       
-      UI.success("📦 Found IPA: #{ipa_path}")
+      UI.success("Found IPA: #{ipa_path}")
       
-      # Get API key from environment
-      api_key_content = ENV['APPLE_AUTH_LITEBYTE']
-      issuer_id = ENV['APPLE_ISSUER_ID']
-      key_id = "5NK3TP4SCM"
+      # Get Apple credentials from environment
+      apple_id = ENV['APPLE_ID']
+      app_password = ENV['APPLE_APP_SPECIFIC_PASSWORD']
       
-      if api_key_content.nil? || issuer_id.nil?
-        UI.user_error!("❌ APPLE_AUTH_LITEBYTE or APPLE_ISSUER_ID not set in environment")
+      if apple_id.nil? || app_password.nil?
+        UI.user_error!("APPLE_ID or APPLE_APP_SPECIFIC_PASSWORD not set in environment")
       end
       
-      # Decode API key
-      require 'base64'
-      require 'json'
-      require 'tempfile'
+      UI.message("Using Apple ID authentication")
+      UI.message("Apple ID: #{apple_id}")
       
-      # Check if it's base64-encoded or raw PEM
-      if api_key_content.start_with?("-----BEGIN")
-        # Raw PEM text - use directly
-        key_pem_text = api_key_content
-        UI.message("📝 Using raw PEM key")
-      else
-        # Assume it's base64-encoded
-        key_pem_text = Base64.decode64(api_key_content).force_encoding('UTF-8')
-        UI.message("📝 Decoded base64 key")
-      end
-      
-      # Remove any BOMs or weird characters
-      key_pem_text = key_pem_text.encode('UTF-8', invalid: :replace, undef: :replace, replace: '')
-      key_pem_text = key_pem_text.sub(/^\xEF\xBB\xBF/, '') # Remove UTF-8 BOM if present
-      key_pem_text = key_pem_text.strip # Remove whitespace
-      
-      # Verify it looks like a PEM key
-      unless key_pem_text.start_with?("-----BEGIN PRIVATE KEY-----")
-        UI.user_error!("❌ APPLE_AUTH_LITEBYTE doesn't appear to be a valid PEM key. It should start with '-----BEGIN PRIVATE KEY-----'. Current start: '#{key_pem_text[0..50]}'")
-      end
-      
-      UI.message("🔐 Using App Store Connect API key authentication")
-      UI.success("✓ Valid PEM key detected")
-      
-      # Create API key hash (alternative to using JSON file)
-      api_key_hash = {
-        key_id: key_id,
-        issuer_id: issuer_id,
-        key: key_pem_text,
-        in_house: false
-      }
-      
-      UI.message("� API key configured: #{key_id}")
-      
-      # Upload to TestFlight using API key hash
+      # Upload to TestFlight using Apple ID + app-specific password
       upload_to_testflight(
         ipa: ipa_path,
-        api_key: api_key_hash,
+        username: apple_id,
         app_identifier: "com.liithos.litebyte",
         skip_waiting_for_build_processing: true,
         skip_submission: true,
@@ -79,13 +42,13 @@ platform :ios do
         notify_external_testers: false
       )
       
-      UI.success("✅ Successfully uploaded to TestFlight!")
-      UI.message("📱 Check status: https://appstoreconnect.apple.com")
+      UI.success("Successfully uploaded to TestFlight!")
+      UI.message("Check status: https://appstoreconnect.apple.com")
       
     rescue ArgumentError => e
       # Catch UTF-8 encoding errors from JUnit generator
       if e.message.include?("invalid byte sequence in UTF-8")
-        UI.important("⚠️  Ignoring JUnit generator encoding error (known Fastlane bug)")
+        UI.important("Ignoring JUnit generator encoding error (known Fastlane bug)")
         exit(0)
       else
         raise e
