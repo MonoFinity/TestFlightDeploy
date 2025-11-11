@@ -36,7 +36,6 @@ platform :ios do
     # Upload to TestFlight
     upload_to_testflight(
       ipa: ipa_path,
-      api_key_path: temp_file.path,
       api_key: {
         key_id: "5NK3TP4SCM",
         issuer_id: issuer_id,
