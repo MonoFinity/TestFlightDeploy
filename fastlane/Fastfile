@@ -21,11 +21,11 @@ platform :ios do
       UI.success("📦 Found IPA: #{ipa_path}")
       
       # Get API key from environment
-      api_key_base64 = ENV['APPLE_AUTH_LITEBYTE']
+      api_key_content = ENV['APPLE_AUTH_LITEBYTE']
       issuer_id = ENV['APPLE_ISSUER_ID']
       key_id = "5NK3TP4SCM"
       
-      if api_key_base64.nil? || issuer_id.nil?
+      if api_key_content.nil? || issuer_id.nil?
         UI.user_error!("❌ APPLE_AUTH_LITEBYTE or APPLE_ISSUER_ID not set in environment")
       end
       
@@ -34,26 +34,29 @@ platform :ios do
       require 'json'
       require 'tempfile'
       
-      # Decode from base64
-      key_bytes = Base64.decode64(api_key_base64)
-      
-      # Try to detect if it's already UTF-8 text or needs conversion
-      if key_bytes.start_with?("-----BEGIN")
-        # It's already text
-        key_pem_text = key_bytes
-      elsif key_bytes[0..10].bytes.any? { |b| b > 127 || b == 0 }
-        # Looks like binary - this is wrong, the .p8 should be text
-        UI.user_error!("❌ APPLE_AUTH_LITEBYTE appears to contain binary data. It should be base64-encoded PEM text starting with '-----BEGIN PRIVATE KEY-----'")
+      # Check if it's base64-encoded or raw PEM
+      if api_key_content.start_with?("-----BEGIN")
+        # Raw PEM text - use directly
+        key_pem_text = api_key_content
+        UI.message("📝 Using raw PEM key")
       else
-        key_pem_text = key_bytes
+        # Assume it's base64-encoded
+        key_pem_text = Base64.decode64(api_key_content).force_encoding('UTF-8')
+        UI.message("📝 Decoded base64 key")
       end
       
-      # Force UTF-8 encoding and clean any BOMs
-      key_pem_text = key_pem_text.force_encoding('UTF-8').encode('UTF-8', invalid: :replace, undef: :replace)
+      # Remove any BOMs or weird characters
+      key_pem_text = key_pem_text.encode('UTF-8', invalid: :replace, undef: :replace, replace: '')
       key_pem_text = key_pem_text.sub(/^\xEF\xBB\xBF/, '') # Remove UTF-8 BOM if present
+      key_pem_text = key_pem_text.strip # Remove whitespace
+      
+      # Verify it looks like a PEM key
+      unless key_pem_text.start_with?("-----BEGIN PRIVATE KEY-----")
+        UI.user_error!("❌ APPLE_AUTH_LITEBYTE doesn't appear to be a valid PEM key. It should start with '-----BEGIN PRIVATE KEY-----'. Current start: '#{key_pem_text[0..50]}'")
+      end
       
       UI.message("🔐 Using App Store Connect API key authentication")
-      UI.message("Key starts with: #{key_pem_text[0..30]}...")
+      UI.success("✓ Valid PEM key detected")
       
       # Create JSON file with API key information (required by api_key_path)
       api_key_json = {
