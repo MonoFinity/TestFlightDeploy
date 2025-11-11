@@ -10,48 +10,61 @@ ENV['FASTLANE_SKIP_JUNIT'] = '1'
 platform :ios do
   desc "Upload iOS build to TestFlight"
   lane :tf_upload do |options|
-    # Get the IPA path from options or fallback search
-    ipa_path = options[:ipa_path] || Dir.glob("../.build/last/*.ipa").first || Dir.glob("*.ipa").first
-    
-    if ipa_path.nil? || !File.exist?(ipa_path)
-      UI.user_error!("❌ No IPA file found at: #{ipa_path || 'any standard path'}")
+    begin
+      # Get the IPA path from options or fallback search
+      ipa_path = options[:ipa_path] || Dir.glob("../.build/last/*.ipa").first || Dir.glob("*.ipa").first
+      
+      if ipa_path.nil? || !File.exist?(ipa_path)
+        UI.user_error!("❌ No IPA file found at: #{ipa_path || 'any standard path'}")
+      end
+      
+      UI.success("📦 Found IPA: #{ipa_path}")
+      
+      # Get API key from environment
+      api_key_base64 = ENV['APPLE_AUTH_LITEBYTE']
+      issuer_id = ENV['APPLE_ISSUER_ID']
+      key_id = "5NK3TP4SCM"
+      
+      if api_key_base64.nil? || issuer_id.nil?
+        UI.user_error!("❌ APPLE_AUTH_LITEBYTE or APPLE_ISSUER_ID not set in environment")
+      end
+      
+      # Decode and save API key with proper binary encoding
+      require 'base64'
+      key_content = Base64.decode64(api_key_base64)
+      key_path = File.expand_path("AuthKey_#{key_id}.p8")
+      File.open(key_path, 'wb') { |f| f.write(key_content) }
+      
+      UI.message("🔐 Using App Store Connect API key authentication")
+      UI.message("📁 Key file: #{key_path}")
+      
+      # Upload to TestFlight
+      upload_to_testflight(
+        ipa: ipa_path,
+        api_key_path: key_path,
+        app_identifier: "com.liithos.litebyte",
+        skip_waiting_for_build_processing: true,
+        skip_submission: true,
+        distribute_external: false,
+        notify_external_testers: false
+      )
+      
+      # Clean up key file
+      File.delete(key_path) if File.exist?(key_path)
+      
+      UI.success("✅ Successfully uploaded to TestFlight!")
+      UI.message("📱 Check status: https://appstoreconnect.apple.com")
+      
+      # Force exit to avoid JUnit generator UTF-8 bug
+      exit(0)
+    rescue ArgumentError => e
+      # Catch UTF-8 encoding errors from JUnit generator
+      if e.message.include?("invalid byte sequence in UTF-8")
+        UI.important("⚠️  Ignoring JUnit generator encoding error (known Fastlane bug)")
+        exit(0)
+      else
+        raise e
+      end
     end
-    
-    UI.success("📦 Found IPA: #{ipa_path}")
-    
-    # Get API key from environment
-    api_key_base64 = ENV['APPLE_AUTH_LITEBYTE']
-    issuer_id = ENV['APPLE_ISSUER_ID']
-    key_id = "5NK3TP4SCM"
-    
-    if api_key_base64.nil? || issuer_id.nil?
-      UI.user_error!("❌ APPLE_AUTH_LITEBYTE or APPLE_ISSUER_ID not set in environment")
-    end
-    
-    # Decode and save API key with proper binary encoding
-    require 'base64'
-    key_content = Base64.decode64(api_key_base64)
-    key_path = File.expand_path("AuthKey_#{key_id}.p8")
-    File.open(key_path, 'wb') { |f| f.write(key_content) }
-    
-    UI.message("🔐 Using App Store Connect API key authentication")
-    UI.message("📁 Key file: #{key_path}")
-    
-    # Upload to TestFlight
-    upload_to_testflight(
-      ipa: ipa_path,
-      api_key_path: key_path,
-      app_identifier: "com.liithos.litebyte",
-      skip_waiting_for_build_processing: true,
-      skip_submission: true,
-      distribute_external: false,
-      notify_external_testers: false
-    )
-    
-    # Clean up key file
-    File.delete(key_path) if File.exist?(key_path)
-    
-    UI.success("✅ Successfully uploaded to TestFlight!")
-    UI.message("📱 Check status: https://appstoreconnect.apple.com")
   end
 end
