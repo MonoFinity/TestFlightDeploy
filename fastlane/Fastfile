@@ -3,6 +3,10 @@
 
 default_platform(:ios)
 
+# Disable analytics and junit to avoid encoding issues
+opt_out_usage
+ENV['FASTLANE_SKIP_JUNIT'] = '1'
+
 platform :ios do
   desc "Upload iOS build to TestFlight"
   lane :tf_upload do |options|
