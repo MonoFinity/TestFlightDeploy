@@ -1,0 +1,93 @@
+name: TestFlight Upload Only (No Unity Build)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ipa_url:
+        description: 'Direct URL to IPA file (from Unity Cloud Build or other source)'
+        required: false
+        default: ''
+      ipa_artifact:
+        description: 'Or upload IPA as artifact before running this workflow'
+        required: false
+        default: 'false'
+
+jobs:
+  upload-to-testflight:
+    name: Upload IPA to TestFlight
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            cloud_build_post_process.sh
+            fastlane
+          sparse-checkout-cone-mode: false
+      
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: false
+      
+      - name: Install Fastlane
+        run: |
+          gem install fastlane -v 2.225.0 --no-document
+          fastlane --version
+      
+      - name: Download IPA from URL
+        if: ${{ github.event.inputs.ipa_url != '' }}
+        run: |
+          echo "📥 Downloading IPA from provided URL..."
+          mkdir -p .build/last
+          curl -L "${{ github.event.inputs.ipa_url }}" -o .build/last/LiteByte.ipa
+          ls -lh .build/last/LiteByte.ipa
+      
+      - name: Download IPA from Build #5 (default)
+        if: ${{ github.event.inputs.ipa_url == '' }}
+        env:
+          UNITY_API_KEY: ${{ secrets.UNITY_CLOUD_API_KEY }}
+        run: |
+          echo "📥 Downloading IPA from Unity Cloud Build #5..."
+          mkdir -p .build/last
+          # Get build #5 details and download IPA
+          BUILD_INFO=$(curl -s -H "Authorization: Basic $UNITY_API_KEY" \
+            "https://build-api.cloud.unity3d.com/api/v1/orgs/111662/projects/f33c3007-0edf-4edb-81ca-21e1ccc47092/buildtargets/ios-litebytelitebytemainlitebyte_v2/builds/5")
+          
+          IPA_URL=$(echo "$BUILD_INFO" | jq -r '.links.artifacts[] | select(.key == "primary") | .files[0].href')
+          
+          echo "IPA URL: $IPA_URL"
+          curl -L "$IPA_URL" -o .build/last/LiteByte.ipa
+          ls -lh .build/last/LiteByte.ipa
+      
+      - name: Set up environment variables
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_AUTH_LITEBYTE: ${{ secrets.APPLE_AUTH_LITEBYTE }}
+          APPLE_ISSUER_ID: ${{ secrets.APPLE_ISSUER_ID }}
+        run: |
+          echo "🔐 Setting up Apple authentication..."
+          echo "APPLE_ID=$APPLE_ID" >> $GITHUB_ENV
+          echo "APPLE_APP_SPECIFIC_PASSWORD=$APPLE_APP_SPECIFIC_PASSWORD" >> $GITHUB_ENV
+          echo "APPLE_AUTH_LITEBYTE=$APPLE_AUTH_LITEBYTE" >> $GITHUB_ENV
+          echo "APPLE_ISSUER_ID=$APPLE_ISSUER_ID" >> $GITHUB_ENV
+          echo "WORKSPACE=$GITHUB_WORKSPACE" >> $GITHUB_ENV
+      
+      - name: Run TestFlight upload
+        run: |
+          echo "🚀 Running fastlane upload to TestFlight..."
+          cd fastlane
+          fastlane ios tf_upload ipa_path:"../.build/last/LiteByte.ipa"
+      
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fastlane-logs
+          path: |
+            fastlane/fastlane.log
+            *.log
+          retention-days: 7
