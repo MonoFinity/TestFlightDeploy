@@ -29,17 +29,18 @@ platform :ios do
         UI.user_error!("❌ APPLE_AUTH_LITEBYTE or APPLE_ISSUER_ID not set in environment")
       end
       
-      # Decode API key
+      # Decode API key (it's a PEM-formatted string)
       require 'base64'
-      key_content = Base64.decode64(api_key_base64)
+      key_pem = Base64.decode64(api_key_base64).force_encoding('UTF-8')
       
       UI.message("🔐 Using App Store Connect API key authentication")
+      UI.message("Key preview: #{key_pem[0..50]}...")
       
-      # Use api_key hash instead of api_key_path to avoid file encoding issues
+      # Create API key hash with PEM string
       api_key = {
         key_id: key_id,
         issuer_id: issuer_id,
-        key: key_content
+        key: key_pem
       }
       
       # Upload to TestFlight
