@@ -15,27 +15,42 @@ platform :ios do
     
     UI.success("📦 Found IPA: #{ipa_path}")
     
-    # Get credentials from environment
-    apple_id = ENV['APPLE_ID'] || 'martiangames@gmail.com'
-    password = ENV['APPLE_APP_SPECIFIC_PASSWORD']
+    # Get API key from environment
+    api_key_base64 = ENV['APPLE_AUTH_LITEBYTE']
     issuer_id = ENV['APPLE_ISSUER_ID']
     
-    if password.nil?
-      UI.user_error!("❌ APPLE_APP_SPECIFIC_PASSWORD not set in environment")
+    if api_key_base64.nil? || issuer_id.nil?
+      UI.user_error!("❌ APPLE_AUTH_LITEBYTE or APPLE_ISSUER_ID not set in environment")
     end
     
-    UI.message("🔐 Using authentication for: #{apple_id}")
+    # Create temporary API key file
+    require 'base64'
+    require 'tempfile'
+    
+    temp_file = Tempfile.new(['AuthKey', '.p8'])
+    temp_file.write(Base64.decode64(api_key_base64))
+    temp_file.close
+    
+    UI.message("🔐 Using App Store Connect API key authentication")
     
     # Upload to TestFlight
     upload_to_testflight(
       ipa: ipa_path,
-      username: apple_id,
+      api_key_path: temp_file.path,
+      api_key: {
+        key_id: "5NK3TP4SCM",
+        issuer_id: issuer_id,
+        key_filepath: temp_file.path
+      },
       app_identifier: "com.liithos.litebyte",
       skip_waiting_for_build_processing: true,
       skip_submission: true,
       distribute_external: false,
       notify_external_testers: false
     )
+    
+    # Clean up temp file
+    temp_file.unlink
     
     UI.success("✅ Successfully uploaded to TestFlight!")
     UI.message("📱 Check status: https://appstoreconnect.apple.com")
