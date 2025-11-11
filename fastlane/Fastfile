@@ -29,13 +29,28 @@ platform :ios do
         UI.user_error!("❌ APPLE_AUTH_LITEBYTE or APPLE_ISSUER_ID not set in environment")
       end
       
-      # Decode API key (base64 -> text PEM)
+      # Decode API key
       require 'base64'
       require 'json'
       require 'tempfile'
       
-      # The secret is base64-encoded PEM text
-      key_pem_text = Base64.decode64(api_key_base64)
+      # Decode from base64
+      key_bytes = Base64.decode64(api_key_base64)
+      
+      # Try to detect if it's already UTF-8 text or needs conversion
+      if key_bytes.start_with?("-----BEGIN")
+        # It's already text
+        key_pem_text = key_bytes
+      elsif key_bytes[0..10].bytes.any? { |b| b > 127 || b == 0 }
+        # Looks like binary - this is wrong, the .p8 should be text
+        UI.user_error!("❌ APPLE_AUTH_LITEBYTE appears to contain binary data. It should be base64-encoded PEM text starting with '-----BEGIN PRIVATE KEY-----'")
+      else
+        key_pem_text = key_bytes
+      end
+      
+      # Force UTF-8 encoding and clean any BOMs
+      key_pem_text = key_pem_text.force_encoding('UTF-8').encode('UTF-8', invalid: :replace, undef: :replace)
+      key_pem_text = key_pem_text.sub(/^\xEF\xBB\xBF/, '') # Remove UTF-8 BOM if present
       
       UI.message("🔐 Using App Store Connect API key authentication")
       UI.message("Key starts with: #{key_pem_text[0..30]}...")
