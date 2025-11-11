@@ -18,27 +18,25 @@ platform :ios do
     # Get API key from environment
     api_key_base64 = ENV['APPLE_AUTH_LITEBYTE']
     issuer_id = ENV['APPLE_ISSUER_ID']
+    key_id = "5NK3TP4SCM"
     
     if api_key_base64.nil? || issuer_id.nil?
       UI.user_error!("❌ APPLE_AUTH_LITEBYTE or APPLE_ISSUER_ID not set in environment")
     end
     
-    # Create API key file in fastlane directory
+    # Decode and save API key
     require 'base64'
-    
-    key_path = File.join(Dir.pwd, "AuthKey_5NK3TP4SCM.p8")
-    File.write(key_path, Base64.decode64(api_key_base64))
+    key_content = Base64.decode64(api_key_base64)
+    key_path = "AuthKey_#{key_id}.p8"
+    File.write(key_path, key_content)
     
     UI.message("🔐 Using App Store Connect API key authentication")
+    UI.message("📁 Key file: #{File.expand_path(key_path)}")
     
     # Upload to TestFlight
     upload_to_testflight(
       ipa: ipa_path,
-      api_key: {
-        key_id: "5NK3TP4SCM",
-        issuer_id: issuer_id,
-        key_filepath: key_path
-      },
+      api_key_path: key_path,
       app_identifier: "com.liithos.litebyte",
       skip_waiting_for_build_processing: true,
       skip_submission: true,
