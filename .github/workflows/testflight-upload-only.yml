@@ -46,11 +46,12 @@ jobs:
           # Backup original
           cp "$JUNIT_FILE" "$JUNIT_FILE.bak"
           
-          # Replace the problematic line with UTF-8 safe version
-          sed -i.tmp "s/xml.gsub('system_', 'system-').delete/xml.force_encoding('UTF-8').gsub('system_', 'system-').delete/g" "$JUNIT_FILE"
+          # Replace the problematic line to properly handle encoding
+          # Instead of just delete("\e"), we'll scrub invalid bytes first
+          sed -i.tmp "s/xml.gsub('system_', 'system-').delete/xml.encode('UTF-8', invalid: :replace, undef: :replace).gsub('system_', 'system-').delete/g" "$JUNIT_FILE"
           
           echo "✅ Patched successfully"
-          grep "force_encoding" "$JUNIT_FILE" || echo "⚠️ Patch may not have applied"
+          grep "encode('UTF-8'" "$JUNIT_FILE" || echo "⚠️ Patch may not have applied"
       
       - name: Download IPA from URL
         if: ${{ github.event.inputs.ipa_url != '' }}
