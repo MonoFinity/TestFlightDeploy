@@ -40,7 +40,7 @@ jobs:
       - name: Patch JUnit generator to fix UTF-8 bug
         run: |
           echo "🔧 Patching Fastlane JUnit generator..."
-          JUNIT_FILE=$(gem which fastlane | xargs dirname | xargs dirname)/fastlane/lib/fastlane/junit_generator.rb
+          JUNIT_FILE=$(gem which fastlane/junit_generator)
           echo "Patching: $JUNIT_FILE"
           
           # Backup original
