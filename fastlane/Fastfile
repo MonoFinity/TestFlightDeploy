@@ -24,11 +24,11 @@ platform :ios do
       UI.user_error!("❌ APPLE_AUTH_LITEBYTE or APPLE_ISSUER_ID not set in environment")
     end
     
-    # Decode and save API key
+    # Decode and save API key with proper binary encoding
     require 'base64'
     key_content = Base64.decode64(api_key_base64)
     key_path = File.expand_path("AuthKey_#{key_id}.p8")
-    File.write(key_path, key_content)
+    File.open(key_path, 'wb') { |f| f.write(key_content) }
     
     UI.message("🔐 Using App Store Connect API key authentication")
     UI.message("📁 Key file: #{key_path}")
