@@ -23,13 +23,11 @@ platform :ios do
       UI.user_error!("❌ APPLE_AUTH_LITEBYTE or APPLE_ISSUER_ID not set in environment")
     end
     
-    # Create temporary API key file
+    # Create API key file in fastlane directory
     require 'base64'
-    require 'tempfile'
     
-    temp_file = Tempfile.new(['AuthKey', '.p8'])
-    temp_file.write(Base64.decode64(api_key_base64))
-    temp_file.close
+    key_path = File.join(Dir.pwd, "AuthKey_5NK3TP4SCM.p8")
+    File.write(key_path, Base64.decode64(api_key_base64))
     
     UI.message("🔐 Using App Store Connect API key authentication")
     
@@ -39,7 +37,7 @@ platform :ios do
       api_key: {
         key_id: "5NK3TP4SCM",
         issuer_id: issuer_id,
-        key_filepath: temp_file.path
+        key_filepath: key_path
       },
       app_identifier: "com.liithos.litebyte",
       skip_waiting_for_build_processing: true,
@@ -48,8 +46,8 @@ platform :ios do
       notify_external_testers: false
     )
     
-    # Clean up temp file
-    temp_file.unlink
+    # Clean up key file
+    File.delete(key_path) if File.exist?(key_path)
     
     UI.success("✅ Successfully uploaded to TestFlight!")
     UI.message("📱 Check status: https://appstoreconnect.apple.com")
