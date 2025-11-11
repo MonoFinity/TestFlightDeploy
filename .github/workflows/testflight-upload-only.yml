@@ -37,6 +37,21 @@ jobs:
           gem install fastlane -v 2.228.0 --no-document
           fastlane --version
       
+      - name: Patch JUnit generator to fix UTF-8 bug
+        run: |
+          echo "🔧 Patching Fastlane JUnit generator..."
+          JUNIT_FILE=$(gem which fastlane | xargs dirname | xargs dirname)/fastlane/lib/fastlane/junit_generator.rb
+          echo "Patching: $JUNIT_FILE"
+          
+          # Backup original
+          cp "$JUNIT_FILE" "$JUNIT_FILE.bak"
+          
+          # Replace the problematic line with UTF-8 safe version
+          sed -i.tmp "s/xml.gsub('system_', 'system-').delete/xml.force_encoding('UTF-8').gsub('system_', 'system-').delete/g" "$JUNIT_FILE"
+          
+          echo "✅ Patched successfully"
+          grep "force_encoding" "$JUNIT_FILE" || echo "⚠️ Patch may not have applied"
+      
       - name: Download IPA from URL
         if: ${{ github.event.inputs.ipa_url != '' }}
         run: |
