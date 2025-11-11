@@ -27,11 +27,11 @@ platform :ios do
     # Decode and save API key
     require 'base64'
     key_content = Base64.decode64(api_key_base64)
-    key_path = "AuthKey_#{key_id}.p8"
+    key_path = File.expand_path("AuthKey_#{key_id}.p8")
     File.write(key_path, key_content)
     
     UI.message("🔐 Using App Store Connect API key authentication")
-    UI.message("📁 Key file: #{File.expand_path(key_path)}")
+    UI.message("📁 Key file: #{key_path}")
     
     # Upload to TestFlight
     upload_to_testflight(
