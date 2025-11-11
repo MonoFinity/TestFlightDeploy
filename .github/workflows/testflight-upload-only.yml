@@ -79,8 +79,10 @@ jobs:
       - name: Run TestFlight upload
         run: |
           echo "🚀 Running fastlane upload to TestFlight..."
+          IPA_ABSOLUTE_PATH="$GITHUB_WORKSPACE/.build/last/LiteByte.ipa"
+          echo "IPA path: $IPA_ABSOLUTE_PATH"
           cd fastlane
-          fastlane ios tf_upload ipa_path:"../.build/last/LiteByte.ipa"
+          fastlane ios tf_upload ipa_path:"$IPA_ABSOLUTE_PATH"
       
       - name: Upload logs on failure
         if: failure()
