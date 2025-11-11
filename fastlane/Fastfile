@@ -29,19 +29,23 @@ platform :ios do
         UI.user_error!("❌ APPLE_AUTH_LITEBYTE or APPLE_ISSUER_ID not set in environment")
       end
       
-      # Decode and save API key with proper binary encoding
+      # Decode API key
       require 'base64'
       key_content = Base64.decode64(api_key_base64)
-      key_path = File.expand_path("AuthKey_#{key_id}.p8")
-      File.open(key_path, 'wb') { |f| f.write(key_content) }
       
       UI.message("🔐 Using App Store Connect API key authentication")
-      UI.message("📁 Key file: #{key_path}")
+      
+      # Use api_key hash instead of api_key_path to avoid file encoding issues
+      api_key = {
+        key_id: key_id,
+        issuer_id: issuer_id,
+        key: key_content
+      }
       
       # Upload to TestFlight
       upload_to_testflight(
         ipa: ipa_path,
-        api_key_path: key_path,
+        api_key: api_key,
         app_identifier: "com.liithos.litebyte",
         skip_waiting_for_build_processing: true,
         skip_submission: true,
@@ -49,14 +53,9 @@ platform :ios do
         notify_external_testers: false
       )
       
-      # Clean up key file
-      File.delete(key_path) if File.exist?(key_path)
-      
       UI.success("✅ Successfully uploaded to TestFlight!")
       UI.message("📱 Check status: https://appstoreconnect.apple.com")
       
-      # Force exit to avoid JUnit generator UTF-8 bug
-      exit(0)
     rescue ArgumentError => e
       # Catch UTF-8 encoding errors from JUnit generator
       if e.message.include?("invalid byte sequence in UTF-8")
