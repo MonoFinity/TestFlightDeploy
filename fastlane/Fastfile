@@ -20,26 +20,28 @@ platform :ios do
       
       UI.success("Found IPA: #{ipa_path}")
       
-      # Get Apple credentials from environment
-      apple_id = ENV['APPLE_ID']
-      app_password = ENV['APPLE_APP_SPECIFIC_PASSWORD']
+      # Get API key details from environment
+      api_key_id = ENV['APP_STORE_CONNECT_API_KEY_KEY_ID']
+      api_key_issuer_id = ENV['APPLE_ISSUER_ID']
+      api_key_content = ENV['APPLE_AUTH_LITEBYTE']
       
-      if apple_id.nil? || app_password.nil?
-        UI.user_error!("APPLE_ID or APPLE_APP_SPECIFIC_PASSWORD not set in environment")
+      if api_key_id.nil? || api_key_issuer_id.nil? || api_key_content.nil?
+        UI.user_error!("API key environment variables not set")
       end
       
-      UI.message("Using Apple ID authentication")
-      UI.message("Apple ID: #{apple_id}")
+      UI.message("Using App Store Connect API Key authentication")
+      UI.message("Key ID: #{api_key_id}")
+      UI.message("Issuer ID: #{api_key_issuer_id}")
+      UI.message("Key content length: #{api_key_content.length} characters")
       
-      # Upload to TestFlight using Apple ID + app-specific password
-      UI.message("Credentials being used:")
-      UI.message("  Username: #{apple_id}")
-      UI.message("  Password length: #{app_password.length} characters")
-      UI.message("  App ID: com.liithos.litebyte")
-      
+      # Upload to TestFlight using API key
       upload_to_testflight(
         ipa: ipa_path,
-        username: apple_id,
+        api_key: {
+          key_id: api_key_id,
+          issuer_id: api_key_issuer_id,
+          key: api_key_content
+        },
         app_identifier: "com.liithos.litebyte",
         skip_waiting_for_build_processing: true,
         skip_submission: true,
