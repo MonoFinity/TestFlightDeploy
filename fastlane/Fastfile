@@ -32,6 +32,11 @@ platform :ios do
       UI.message("Apple ID: #{apple_id}")
       
       # Upload to TestFlight using Apple ID + app-specific password
+      UI.message("Credentials being used:")
+      UI.message("  Username: #{apple_id}")
+      UI.message("  Password length: #{app_password.length} characters")
+      UI.message("  App ID: com.liithos.litebyte")
+      
       upload_to_testflight(
         ipa: ipa_path,
         username: apple_id,
