@@ -45,12 +45,24 @@ platform :ios do
       UI.success("Successfully uploaded to TestFlight!")
       UI.message("Check status: https://appstoreconnect.apple.com")
       
-    rescue ArgumentError => e
-      # Catch UTF-8 encoding errors from JUnit generator
-      if e.message.include?("invalid byte sequence in UTF-8")
+    rescue => e
+      # Capture detailed error information
+      error_msg = e.message.to_s
+      error_class = e.class.to_s
+      
+      UI.error("Error class: #{error_class}")
+      UI.error("Error message: #{error_msg}")
+      
+      # Check for specific error types
+      if error_msg.include?("Two-factor")
+        UI.error("⚠️  2FA DETECTED: This account has two-factor authentication enabled")
+        UI.error("Non-interactive authentication is blocked by 2FA")
+        exit(1)
+      elsif error_msg.include?("invalid byte sequence in UTF-8")
         UI.important("Ignoring JUnit generator encoding error (known Fastlane bug)")
         exit(0)
       else
+        # Re-raise with full context
         raise e
       end
     end
