@@ -61,22 +61,34 @@ jobs:
           curl -L "${{ github.event.inputs.ipa_url }}" -o .build/last/LiteByte.ipa
           ls -lh .build/last/LiteByte.ipa
       
-      - name: Download IPA from Build #5 (default)
+      - name: Download IPA from Latest Build (default)
         if: ${{ github.event.inputs.ipa_url == '' }}
         env:
           UNITY_API_KEY: ${{ secrets.UNITY_CLOUD_API_KEY }}
         run: |
-          echo "📥 Downloading IPA from Unity Cloud Build #5..."
+          echo "📥 Finding latest successful Unity Cloud Build..."
           mkdir -p .build/last
-          # Get build #5 details and download IPA
+          
+          # Get all builds and find the latest successful one
+          BUILDS=$(curl -s -H "Authorization: Basic $UNITY_API_KEY" \
+            "https://build-api.cloud.unity3d.com/api/v1/orgs/111662/projects/f33c3007-0edf-4edb-81ca-21e1ccc47092/buildtargets/ios-litebytelitebytemainlitebyte_v2/builds?per_page=25")
+          
+          # Find the most recent successful build number
+          LATEST_BUILD=$(echo "$BUILDS" | jq -r '[.[] | select(.buildStatus == "success")] | sort_by(.build) | reverse | .[0].build')
+          
+          echo "Latest successful build: #$LATEST_BUILD"
+          
+          # Get that build's details and download IPA
           BUILD_INFO=$(curl -s -H "Authorization: Basic $UNITY_API_KEY" \
-            "https://build-api.cloud.unity3d.com/api/v1/orgs/111662/projects/f33c3007-0edf-4edb-81ca-21e1ccc47092/buildtargets/ios-litebytelitebytemainlitebyte_v2/builds/5")
+            "https://build-api.cloud.unity3d.com/api/v1/orgs/111662/projects/f33c3007-0edf-4edb-81ca-21e1ccc47092/buildtargets/ios-litebytelitebytemainlitebyte_v2/builds/$LATEST_BUILD")
           
           IPA_URL=$(echo "$BUILD_INFO" | jq -r '.links.artifacts[] | select(.key == "primary") | .files[0].href')
           
+          echo "Downloading from build #$LATEST_BUILD"
           echo "IPA URL: $IPA_URL"
           curl -L "$IPA_URL" -o .build/last/LiteByte.ipa
           ls -lh .build/last/LiteByte.ipa
+          echo "✓ Downloaded build #$LATEST_BUILD successfully"
       
       - name: Set up environment variables
         env:
